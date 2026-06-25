@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>タイム記録</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="タイム記録">
+<meta name="theme-color" content="#0A1E2E">
+<link id="manifestLink" rel="manifest" href="">
+<link id="appleTouchIcon" rel="apple-touch-icon" href="">
+<link id="faviconLink" rel="icon" href="">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0A1E2E;--surface:#112A3D;--surface-2:#163448;--border:#1F4258;
+    --text:#EAF6F6;--text-muted:#7FA6B8;--aqua:#2FD3C9;--amber:#FFCB66;
+    --danger:#FF6B6B;--success:#5FE3B3;--radius:16px;--radius-sm:10px;--nav-h:56px;
+    --font-display:'Oswald',sans-serif;--font-body:'Work Sans',sans-serif;--font-mono:'Space Mono',monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:var(--font-body);-webkit-font-smoothing:antialiased;min-height:100vh;min-height:100dvh;overflow-x:hidden;}
+  button{font-family:inherit;}
+  :focus-visible{outline:2px solid var(--aqua);outline-offset:2px;}
+  .app-shell{max-width:480px;margin:0 auto;position:relative;}
+
+  .lane-divider{height:16px;background-image:radial-gradient(circle 5px at 8px 8px,var(--aqua) 5px,transparent 5.6px),radial-gradient(circle 5px at 28px 8px,var(--amber) 5px,transparent 5.6px),linear-gradient(to right,var(--border),var(--border));background-size:40px 16px,40px 16px,100% 2px;background-repeat:repeat-x,repeat-x,no-repeat;background-position:0 0,0 0,0 7px;opacity:.9;}
+
+  header.hero{padding-top:env(safe-area-inset-top);position:relative;}
+  .hero-content{padding:20px 56px 14px 20px;}
+  .eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:.18em;color:var(--aqua);margin:0 0 4px;}
+  h1.title{font-family:var(--font-display);font-weight:700;font-size:30px;margin:0 0 14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .stats-row{display:flex;gap:8px;}
+  .stat{flex:1;min-width:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 6px;text-align:center;}
+  .stat-num{display:block;font-family:var(--font-mono);font-weight:700;font-size:19px;}
+  .stat-label{display:block;font-size:10.5px;color:var(--text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .settings-btn{position:absolute;top:calc(env(safe-area-inset-top) + 14px);right:14px;}
+  .icon-btn{width:44px;height:44px;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:17px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none;}
+
+  .bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;height:calc(var(--nav-h) + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);background:var(--surface);border-top:1px solid var(--border);display:flex;z-index:20;}
+  .nav-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:none;background:none;color:var(--text-muted);font-size:11px;font-weight:600;cursor:pointer;padding:8px 0;}
+  .nav-tab.active{color:var(--aqua);}
+  .nav-tab-icon{font-size:20px;line-height:1;}
+
+  .screen{display:none;}
+  .screen.active{display:block;}
+
+  .filter-bar{padding:12px 16px 2px;}
+  .chip-row{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 6px;scrollbar-width:none;}
+  .chip-row::-webkit-scrollbar{display:none;}
+  .chip{flex:none;font-family:var(--font-body);font-size:13.5px;font-weight:600;min-height:40px;display:inline-flex;align-items:center;padding:0 16px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--text-muted);cursor:pointer;white-space:nowrap;}
+  .chip.active{color:var(--bg);border-color:transparent;font-weight:700;}
+  .record-list{padding:8px 16px calc(var(--nav-h) + 90px + env(safe-area-inset-bottom));}
+  .empty-state{text-align:center;color:var(--text-muted);padding:60px 24px;font-size:14px;line-height:1.7;}
+  .empty-state .ei{font-size:36px;display:block;margin-bottom:10px;}
+  .meet-group{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:16px;overflow:hidden;}
+  .meet-header{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:14px 16px;cursor:pointer;}
+  .meet-header:active{background:var(--surface-2);}
+  .meet-header-text{min-width:0;flex:1;}
+  .meet-name{font-family:var(--font-display);font-size:18px;font-weight:600;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .meet-date{font-size:12px;color:var(--text-muted);margin:3px 0 0;font-family:var(--font-mono);}
+  .course-badge{font-size:11px;font-family:var(--font-mono);font-weight:700;padding:5px 10px;border-radius:999px;background:var(--surface-2);color:var(--amber);white-space:nowrap;flex:none;}
+  .record-rows{border-top:1px solid var(--border);}
+  .record-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 16px;border-left:4px solid var(--sc,var(--aqua));border-bottom:1px solid var(--border);cursor:pointer;min-height:44px;}
+  .record-row:last-child{border-bottom:none;}
+  .record-row:active{background:var(--surface-2);}
+  .record-main{display:flex;flex-direction:column;gap:3px;min-width:0;}
+  .record-event{font-size:14.5px;font-weight:700;}
+  .record-event .jp{font-weight:500;color:var(--text-muted);font-size:12px;margin-left:6px;}
+  .record-type{font-size:11px;color:var(--text-muted);}
+  .rtime-block{text-align:right;flex:none;}
+  .rtime{display:block;font-family:var(--font-mono);font-weight:700;font-size:19px;}
+  .rdelta{display:block;font-size:11px;font-family:var(--font-mono);margin-top:2px;color:var(--text-muted);}
+  .rdelta.best{color:var(--success);font-weight:700;}
+
+  .bests-course-bar{padding:12px 16px 4px;display:flex;gap:8px;}
+  .bests-course-btn{flex:1;min-height:40px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--text-muted);font-size:13px;font-weight:600;cursor:pointer;}
+  .bests-course-btn.active{background:var(--amber);color:#1a1000;border-color:transparent;}
+  .bests-list{padding:6px 16px calc(var(--nav-h) + 90px + env(safe-area-inset-bottom));}
+  .stroke-section{margin-bottom:20px;}
+  .stroke-section-header{display:flex;align-items:center;gap:10px;padding:10px 0 6px;border-bottom:2px solid var(--stroke-accent,var(--aqua));margin-bottom:2px;}
+  .stroke-section-dot{width:10px;height:10px;border-radius:50%;background:var(--stroke-accent,var(--aqua));flex:none;}
+  .stroke-section-name{font-family:var(--font-display);font-size:18px;font-weight:700;}
+  .stroke-section-code{font-family:var(--font-mono);font-size:12px;color:var(--text-muted);margin-left:2px;}
+  .best-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 12px 12px 16px;border-left:3px solid var(--stroke-accent,var(--aqua));border-bottom:1px solid var(--border);cursor:pointer;min-height:44px;background:var(--surface);}
+  .best-row:last-of-type{border-bottom:none;}
+  .best-row:active{background:var(--surface-2);}
+  .best-main{display:flex;flex-direction:column;gap:3px;min-width:0;}
+  .best-event{font-size:14px;font-weight:700;}
+  .best-meta{font-size:11px;color:var(--text-muted);font-family:var(--font-mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .best-right{text-align:right;flex:none;}
+  .best-time{display:block;font-family:var(--font-mono);font-weight:700;font-size:20px;}
+  .best-count{display:block;font-size:11px;color:var(--text-muted);margin-top:2px;}
+
+  .history-title-event{font-family:var(--font-mono);font-size:13px;color:var(--aqua);margin-top:4px;}
+  .history-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 12px;border-bottom:1px solid var(--border);min-height:44px;}
+  .history-row:last-child{border-bottom:none;}
+  .history-left{display:flex;flex-direction:column;gap:3px;min-width:0;}
+  .history-date{font-size:12px;font-family:var(--font-mono);color:var(--text-muted);}
+  .history-meet{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .history-right{text-align:right;flex:none;}
+  .history-time{display:block;font-family:var(--font-mono);font-weight:700;font-size:19px;}
+  .history-delta{display:block;font-size:11px;font-family:var(--font-mono);margin-top:2px;}
+  .history-delta.best{color:var(--success);font-weight:700;}
+  .history-empty{text-align:center;color:var(--text-muted);padding:32px 16px;font-size:13px;}
+
+  .fab{position:fixed;right:24px;bottom:calc(var(--nav-h) + 18px + env(safe-area-inset-bottom));width:58px;height:58px;border-radius:50%;background:var(--aqua);color:#06222A;border:none;font-size:28px;font-weight:700;line-height:1;box-shadow:0 8px 20px rgba(47,211,201,.35);cursor:pointer;z-index:30;}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(5,14,22,.6);display:none;align-items:flex-end;justify-content:center;z-index:50;}
+  .modal-overlay.open{display:flex;}
+  .modal{width:100%;max-width:480px;max-height:88vh;max-height:88dvh;overflow-y:auto;background:var(--surface);border-radius:20px 20px 0 0;padding:18px 18px calc(22px + env(safe-area-inset-bottom));animation:slideUp .22s ease;}
+  @keyframes slideUp{from{transform:translateY(24px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+  .modal-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:10px;}
+  .modal-header h2{font-family:var(--font-display);font-size:19px;margin:0;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .modal-header-text{min-width:0;flex:1;}
+  label,.field-label{display:block;font-size:12.5px;color:var(--text-muted);margin:14px 0 6px;}
+  input[type=text],input[type=number]{width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-sm);padding:12px;font-size:16px;font-family:var(--font-body);}
+  input[type=date]{background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-sm);padding:11px 12px;font-size:16px;font-family:var(--font-body);min-height:44px;}
+  input:focus{border-color:var(--aqua);}
+  /* 複数日付入力 */
+  .date-rows{display:flex;flex-direction:column;gap:8px;}
+  .date-row{display:flex;align-items:center;gap:8px;}
+  .date-row input[type=date]{flex:1;}
+  .date-rm-btn{flex:none;width:36px;height:44px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface-2);color:var(--danger);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .date-add-btn{margin-top:8px;width:100%;min-height:40px;border-radius:var(--radius-sm);border:1px dashed var(--border);background:transparent;color:var(--text-muted);font-size:13px;cursor:pointer;}
+  .date-add-btn:active{background:var(--surface-2);}
+  .segmented{display:flex;gap:8px;}
+  .segmented button{flex:1;min-height:44px;padding:8px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface-2);color:var(--text-muted);font-size:13.5px;font-weight:600;cursor:pointer;}
+  .segmented button.active{border-color:var(--aqua);color:var(--aqua);background:rgba(47,211,201,.08);}
+  #distanceInput{margin-top:8px;}
+  .form-error{color:var(--danger);font-size:12.5px;margin-top:10px;min-height:16px;}
+  .modal-actions{display:flex;gap:10px;margin-top:20px;}
+  .btn{flex:1;min-height:48px;padding:10px;border-radius:var(--radius-sm);border:none;font-size:15px;font-weight:700;cursor:pointer;font-family:var(--font-body);}
+  .btn-primary{background:var(--aqua);color:#06222A;}
+  .btn-danger{background:transparent;color:var(--danger);border:1px solid var(--danger);flex:0 0 auto;padding:10px 18px;}
+  .hidden{display:none !important;}
+
+  .context-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:6px;}
+  .context-bar-text{min-width:0;}
+  .ctx-name{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .ctx-meta{font-size:11.5px;color:var(--text-muted);font-family:var(--font-mono);margin-top:2px;}
+  .ctx-change{flex:none;font-size:12.5px;color:var(--aqua);font-weight:700;background:none;border:none;cursor:pointer;padding:8px 4px;min-height:44px;}
+
+  .new-meet-form{border:1px dashed var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;}
+  .meet-list-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 12px;border-bottom:1px solid var(--border);cursor:pointer;min-height:44px;}
+  .meet-list-item:last-child{border-bottom:none;}
+  .meet-list-item:active{background:var(--surface-2);}
+  .mli-name{font-size:14.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .mli-meta{font-size:11.5px;color:var(--text-muted);font-family:var(--font-mono);margin-top:2px;}
+  .section-title{font-size:12px;color:var(--text-muted);margin:18px 0 8px;}
+  .add-new-meet-btn{width:100%;min-height:48px;border-radius:var(--radius-sm);border:1px dashed var(--aqua);background:rgba(47,211,201,.06);color:var(--aqua);font-weight:700;font-size:14px;cursor:pointer;}
+
+  .settings-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);gap:10px;}
+  .settings-row:last-child{border-bottom:none;}
+  .settings-row span{font-size:14px;}
+  .small-btn{padding:9px 14px;min-height:40px;border-radius:999px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:12.5px;cursor:pointer;}
+  .small-btn.danger{color:var(--danger);border-color:var(--danger);}
+
+  .toast{position:fixed;left:50%;bottom:calc(var(--nav-h) + 70px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(10px);background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:10px 18px;border-radius:999px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:60;white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  @media(max-width:360px){h1.title{font-size:25px;}.stat-num{font-size:16px;}.rtime{font-size:17px;}.meet-name{font-size:16px;}}
+  @media(max-height:420px) and (orientation:landscape){.modal{max-height:96dvh;}.hero-content{padding-top:10px;padding-bottom:8px;}}
+  @media(prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important;}}
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <header class="hero">
+    <div class="lane-divider"></div>
+    <div class="hero-content">
+      <p class="eyebrow">SWIM RECORD LOG</p>
+      <h1 class="title">タイム記録</h1>
+      <div class="stats-row">
+        <div class="stat"><span class="stat-num" id="statMeets">0</span><span class="stat-label">大会</span></div>
+        <div class="stat"><span class="stat-num" id="statRecords">0</span><span class="stat-label">記録</span></div>
+        <div class="stat"><span class="stat-num" id="statBests">0</span><span class="stat-label">自己ベスト</span></div>
+      </div>
+    </div>
+    <div class="lane-divider"></div>
+    <button class="icon-btn settings-btn" id="settingsBtn" aria-label="設定">⋯</button>
+  </header>
+
+  <div class="screen active" id="screen-log">
+    <div class="filter-bar"><div class="chip-row" id="strokeFilter"></div></div>
+    <main class="record-list" id="recordList"></main>
+  </div>
+
+  <div class="screen" id="screen-bests">
+    <div class="bests-course-bar">
+      <button class="bests-course-btn active" data-course="ALL" id="bcAll">すべて</button>
+      <button class="bests-course-btn" data-course="SC" id="bcSC">短水路</button>
+      <button class="bests-course-btn" data-course="LC" id="bcLC">長水路</button>
+    </div>
+    <div class="bests-list" id="bestsList"></div>
+  </div>
+
+  <nav class="bottom-nav">
+    <button class="nav-tab active" id="navLog"><span class="nav-tab-icon">📋</span>記録</button>
+    <button class="nav-tab" id="navBests"><span class="nav-tab-icon">★</span>ベスト</button>
+  </nav>
+  <button class="fab" id="addBtn" aria-label="記録を追加">＋</button>
+</div>
+
+<!-- Settings -->
+<div class="modal-overlay" id="settingsOverlay">
+  <div class="modal">
+    <div class="modal-header"><h2>設定</h2><button class="icon-btn" id="closeSettingsBtn">✕</button></div>
+    <p class="section-title">データのバックアップ</p>
+    <div class="settings-row"><span>JSONをエクスポート</span><button class="small-btn" id="exportBtn">書き出す</button></div>
+    <div class="settings-row"><span>JSONを読み込む</span><button class="small-btn" id="importBtn">読み込む</button><input type="file" id="importFile" accept="application/json" class="hidden"></div>
+    <p class="section-title">データの削除</p>
+    <div class="settings-row"><span>すべてのデータを削除</span><button class="small-btn danger" id="clearAllBtn">削除</button></div>
+    <p style="font-size:11.5px;color:var(--text-muted);margin-top:18px;line-height:1.6;">共有メニューから「ホーム画面に追加」するとアプリのように使えます。</p>
+  </div>
+</div>
+
+<!-- Meet picker -->
+<div class="modal-overlay" id="meetPickerOverlay">
+  <div class="modal">
+    <div class="modal-header"><h2>大会を選択</h2><button class="icon-btn" id="closeMeetPickerBtn">✕</button></div>
+    <button type="button" class="add-new-meet-btn" id="showNewMeetFormBtn">＋ 新しい大会を追加</button>
+    <div class="new-meet-form hidden" id="newMeetForm">
+      <label for="newMeetName">大会名</label>
+      <input type="text" id="newMeetName" placeholder="例: 関東学生選手権">
+      <span class="field-label">日付</span>
+      <div class="date-rows" id="newMeetDatesWrap"></div>
+      <button type="button" class="date-add-btn" id="addNewMeetDateBtn">＋ 日付を追加</button>
+      <span class="field-label">コース</span>
+      <div class="segmented" id="newMeetCourseSegmented">
+        <button type="button" data-value="SC">短水路 (25m)</button>
+        <button type="button" data-value="LC">長水路 (50m)</button>
+      </div>
+      <p class="form-error" id="newMeetError"></p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-primary" id="createMeetBtn">この大会で記録を始める</button>
+      </div>
+    </div>
+    <p class="section-title" id="recentMeetsTitle">最近の大会</p>
+    <div id="meetListWrap"></div>
+  </div>
+</div>
+
+<!-- Meet edit -->
+<div class="modal-overlay" id="meetEditOverlay">
+  <div class="modal">
+    <div class="modal-header"><h2>大会を編集</h2><button class="icon-btn" id="closeMeetEditBtn">✕</button></div>
+    <label for="editMeetName">大会名</label>
+    <input type="text" id="editMeetName">
+    <span class="field-label">日付</span>
+    <div class="date-rows" id="editMeetDatesWrap"></div>
+    <button type="button" class="date-add-btn" id="addEditMeetDateBtn">＋ 日付を追加</button>
+    <span class="field-label">コース</span>
+    <div class="segmented" id="editMeetCourseSegmented">
+      <button type="button" data-value="SC">短水路 (25m)</button>
+      <button type="button" data-value="LC">長水路 (50m)</button>
+    </div>
+    <p style="font-size:11.5px;color:var(--text-muted);margin-top:10px;">コースを変更するとこの大会のすべての記録に反映されます。</p>
+    <p class="form-error" id="meetEditError"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-danger" id="deleteMeetBtn">大会を削除</button>
+      <button type="button" class="btn btn-primary" id="saveMeetBtn">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Record add/edit -->
+<div class="modal-overlay" id="recordModalOverlay">
+  <div class="modal">
+    <div class="modal-header"><h2 id="recordModalTitle">記録を追加</h2><button class="icon-btn" id="closeRecordModalBtn">✕</button></div>
+    <div class="context-bar">
+      <div class="context-bar-text">
+        <div class="ctx-name" id="contextMeetName">—</div>
+        <div class="ctx-meta" id="contextMeetMeta">—</div>
+      </div>
+      <button type="button" class="ctx-change" id="changeMeetBtn">変更</button>
+    </div>
+    <form id="recordForm">
+      <span class="field-label">種目</span>
+      <div class="chip-row" id="strokeChips"></div>
+      <span class="field-label">距離 (m)</span>
+      <div class="chip-row" id="distanceChips"></div>
+      <input type="number" id="distanceInput" min="25" step="25" placeholder="距離を直接入力 (m)">
+      <span class="field-label">個人 / 引き継ぎ</span>
+      <div class="segmented" id="typeSegmented">
+        <button type="button" data-value="IND">個人</button>
+        <button type="button" data-value="REL">引き継ぎ</button>
+      </div>
+      <label for="timeInput">タイム</label>
+      <input type="text" id="timeInput" required placeholder="例: 58.23 / 1:02.35" inputmode="decimal">
+      <p class="form-error" id="formError"></p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-danger hidden" id="deleteRecordBtn">削除</button>
+        <button type="submit" class="btn btn-primary" id="saveRecordBtn">保存して続けて追加</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- History overlay -->
+<div class="modal-overlay" id="historyOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-header-text">
+        <h2 id="historyTitle">タイム推移</h2>
+        <div class="history-title-event" id="historySubtitle"></div>
+      </div>
+      <button class="icon-btn" id="closeHistoryBtn">✕</button>
+    </div>
+    <div id="historyList"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+
+var STROKE_ORDER=['Fr','Fly','Ba','Br','IM'];
+var STROKE_INFO={Fr:{jp:'自由形',color:'#2FD3C9'},Fly:{jp:'バタフライ',color:'#FF6B6B'},Ba:{jp:'背泳ぎ',color:'#5AC8FA'},Br:{jp:'平泳ぎ',color:'#FFD166'},IM:{jp:'個人メドレー',color:'#B58CFF'}};
+var JP_TO_CODE={'自由形':'Fr','バタフライ':'Fly','背泳ぎ':'Ba','平泳ぎ':'Br','個人メドレー':'IM'};
+var DISTANCES=[50,100,200,400,800,1500];
+var COURSE_SHORT={SC:'短水路',LC:'長水路'};
+var TYPE_LABEL={IND:'個人',REL:'引き継ぎ'};
+var MEETS_KEY='swimlog_meets_v2';
+var RECORDS_KEY='swimlog_records_v2';
+var OLD_KEY='swimlog_records_v1';
+var LAST_MEET_KEY='swimlog_last_meet_v2';
+
+var meets=[],records=[];
+loadData();
+var activeStrokeFilter='ALL',bestsCourseFilter='ALL';
+var editingMeetId=null,editingRecordId=null,activeMeetId=null;
+var recordFormState={stroke:null,type:'IND'};
+var newMeetDates=[''],editMeetDates=[''];
+
+/* ---- Storage ---- */
+function loadData(){
+  try{
+    var m=localStorage.getItem(MEETS_KEY),r=localStorage.getItem(RECORDS_KEY);
+    if(m&&r){
+      meets=JSON.parse(m); records=JSON.parse(r);
+      // normalize old .date → .dates
+      meets.forEach(function(meet){
+        if(!meet.dates){ meet.dates=meet.date?[meet.date]:[]; delete meet.date; }
+      });
+      return;
+    }
+  }catch(e){}
+  try{
+    var old=localStorage.getItem(OLD_KEY);
+    if(old){ var mg=migrateFlatRecords(JSON.parse(old)); meets=mg.meets; records=mg.records; saveData(); localStorage.removeItem(OLD_KEY); return; }
+  }catch(e){}
+  meets=[]; records=[];
+}
+function migrateFlatRecords(arr){
+  if(!Array.isArray(arr)) return {meets:[],records:[]};
+  var mm={},nm=[],nr=[];
+  arr.forEach(function(r){
+    var k=(r.meet||'')+'__'+(r.date||'')+'__'+(r.course||'SC');
+    if(!mm[k]){var o={id:'m'+Date.now()+Math.random().toString(36).slice(2,7),name:r.meet||'大会',dates:[(r.date||'')],course:r.course||'SC'};mm[k]=o;nm.push(o);}
+    nr.push({id:r.id||('r'+Date.now()+Math.random().toString(36).slice(2,7)),meetId:mm[k].id,stroke:JP_TO_CODE[r.stroke]||'Fr',distance:r.distance,type:r.type||'IND',timeSec:r.timeSec,createdAt:r.createdAt||Date.now()});
+  });
+  return {meets:nm,records:nr};
+}
+function saveData(){ localStorage.setItem(MEETS_KEY,JSON.stringify(meets)); localStorage.setItem(RECORDS_KEY,JSON.stringify(records)); }
+function getMeet(id){ return meets.find(function(m){return m.id===id;})||null; }
+function setLastMeetId(id){ localStorage.setItem(LAST_MEET_KEY,id); }
+function getLastMeetId(){ return localStorage.getItem(LAST_MEET_KEY); }
+
+/* ---- Date helpers ---- */
+function getMeetPrimaryDate(meet){
+  var dates=(meet.dates||[]).filter(Boolean);
+  if(!dates.length) return '';
+  return dates.slice().sort()[0];
+}
+function formatDateJP(d){
+  var p=(d||'').split('-');
+  if(p.length!==3) return d||'';
+  return p[0]+'年'+parseInt(p[1],10)+'月'+parseInt(p[2],10)+'日';
+}
+function formatMeetDates(meet){
+  var dates=(meet.dates||[]).filter(Boolean).slice().sort();
+  if(!dates.length) return '';
+  if(dates.length===1) return formatDateJP(dates[0]);
+  var p0=dates[0].split('-');
+  var allSameMonth=dates.every(function(d){var p=d.split('-');return p[0]===p0[0]&&p[1]===p0[1];});
+  if(allSameMonth){
+    var days=dates.map(function(d){return parseInt(d.split('-')[2],10);});
+    return p0[0]+'年'+parseInt(p0[1],10)+'月'+days.join('・')+'日';
+  }
+  var allSameYear=dates.every(function(d){return d.split('-')[0]===p0[0];});
+  if(allSameYear){
+    return p0[0]+'年 '+dates.map(function(d){var p=d.split('-');return parseInt(p[1],10)+'月'+parseInt(p[2],10)+'日';}).join('・');
+  }
+  return dates.map(function(d){return formatDateJP(d);}).join(' · ');
+}
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function el(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!==undefined)e.textContent=txt;return e;}
+
+/* ---- Normalization & best map ---- */
+function normalizedTime(r){
+  var meet=getMeet(r.meetId);
+  var scAdj=(meet&&meet.course==='SC')?(r.distance/50)*1.0:0;
+  var relAdj=(r.type==='REL')?0.5:0;
+  return r.timeSec+scAdj+relAdj;
+}
+function comboKey(r){ return [r.stroke,r.distance].join('|'); }
+function computeBestMap(){
+  var map={};
+  records.forEach(function(r){ var k=comboKey(r),nt=normalizedTime(r); if(!map[k]||nt<map[k].nt) map[k]={id:r.id,nt:nt}; });
+  return map;
+}
+
+/* ---- Tab switching ---- */
+function switchTab(tab){
+  document.getElementById('screen-log').classList.toggle('active',tab==='log');
+  document.getElementById('screen-bests').classList.toggle('active',tab==='bests');
+  document.getElementById('navLog').classList.toggle('active',tab==='log');
+  document.getElementById('navBests').classList.toggle('active',tab==='bests');
+  document.getElementById('addBtn').classList.toggle('hidden',tab==='bests');
+  if(tab==='bests') renderBests();
+}
+document.getElementById('navLog').addEventListener('click',function(){switchTab('log');});
+document.getElementById('navBests').addEventListener('click',function(){switchTab('bests');});
+
+/* ---- Stats + filter ---- */
+function renderStats(){
+  var bm=computeBestMap();
+  document.getElementById('statMeets').textContent=meets.length;
+  document.getElementById('statRecords').textContent=records.length;
+  document.getElementById('statBests').textContent=Object.keys(bm).length;
+}
+function renderStrokeFilter(){
+  var wrap=document.getElementById('strokeFilter'); wrap.innerHTML='';
+  ['ALL'].concat(STROKE_ORDER).forEach(function(code){
+    var chip=el('button','chip',code==='ALL'?'すべて':code); chip.type='button';
+    if(code===activeStrokeFilter){chip.classList.add('active');chip.style.background=code==='ALL'?'var(--aqua)':STROKE_INFO[code].color;}
+    chip.addEventListener('click',function(){activeStrokeFilter=code;renderLog();});
+    wrap.appendChild(chip);
+  });
+}
+
+/* ---- Log screen ---- */
+function renderLog(){
+  renderStats(); renderStrokeFilter();
+  var list=document.getElementById('recordList'); list.innerHTML='';
+  var filtered=records.filter(function(r){return activeStrokeFilter==='ALL'||r.stroke===activeStrokeFilter;});
+  if(!filtered.length){
+    var emp=el('div','empty-state');
+    emp.appendChild(el('span','ei','〜'));
+    emp.appendChild(document.createTextNode(records.length===0?'まだ記録がありません。右下の＋ボタンから追加しましょう。':'該当する記録がありません。'));
+    list.appendChild(emp); return;
+  }
+  var bm=computeBestMap();
+  var byMeet={};
+  filtered.forEach(function(r){if(!byMeet[r.meetId])byMeet[r.meetId]=[];byMeet[r.meetId].push(r);});
+  Object.keys(byMeet).sort(function(a,b){
+    var ma=getMeet(a),mb=getMeet(b); if(!ma||!mb) return 0;
+    var da=getMeetPrimaryDate(ma),db=getMeetPrimaryDate(mb);
+    if(da!==db) return da<db?1:-1;
+    return (ma.name||'').localeCompare(mb.name||'','ja');
+  }).forEach(function(meetId){
+    var meet=getMeet(meetId); if(!meet) return;
+    var grp=byMeet[meetId].slice().sort(function(a,b){var sa=STROKE_ORDER.indexOf(a.stroke),sb=STROKE_ORDER.indexOf(b.stroke);return sa!==sb?sa-sb:a.distance-b.distance;});
+    var section=el('section','meet-group');
+    var hdr=el('div','meet-header'); hdr.tabIndex=0;
+    var tw=el('div','meet-header-text');
+    tw.appendChild(el('h2','meet-name',meet.name));
+    tw.appendChild(el('p','meet-date',formatMeetDates(meet)));
+    hdr.appendChild(tw); hdr.appendChild(el('span','course-badge',COURSE_SHORT[meet.course]));
+    hdr.addEventListener('click',function(){openMeetEdit(meetId);}); section.appendChild(hdr);
+    var rows=el('div','record-rows');
+    grp.forEach(function(r){
+      var info=STROKE_INFO[r.stroke]||STROKE_INFO.Fr;
+      var row=el('div','record-row'); row.style.setProperty('--sc',info.color);
+      var main=el('div','record-main');
+      var ev=el('span','record-event',r.stroke+' '+r.distance+'m'); ev.appendChild(el('span','jp',info.jp));
+      main.appendChild(ev); main.appendChild(el('span','record-type',TYPE_LABEL[r.type])); row.appendChild(main);
+      var tb=el('div','rtime-block'); tb.appendChild(el('span','rtime',formatTime(r.timeSec)));
+      var k=comboKey(r),best=bm[k];
+      if(best&&best.id===r.id) tb.appendChild(el('span','rdelta best','★ 自己ベスト'));
+      row.appendChild(tb);
+      row.addEventListener('click',function(){openRecordModal(meetId,r.id);}); rows.appendChild(row);
+    });
+    section.appendChild(rows); list.appendChild(section);
+  });
+}
+
+/* ---- Bests screen ---- */
+function renderBests(){
+  renderStats();
+  ['ALL','SC','LC'].forEach(function(c){document.getElementById(c==='ALL'?'bcAll':c==='SC'?'bcSC':'bcLC').classList.toggle('active',bestsCourseFilter===c);});
+  var list=document.getElementById('bestsList'); list.innerHTML='';
+  if(!records.length){
+    var emp=el('div','empty-state');emp.appendChild(el('span','ei','〜'));emp.appendChild(document.createTextNode('記録がありません。'));list.appendChild(emp);return;
+  }
+  var eventMap={};
+  records.forEach(function(r){
+    var meet=getMeet(r.meetId); if(!meet) return;
+    if(bestsCourseFilter!=='ALL'&&meet.course!==bestsCourseFilter) return;
+    var k=comboKey(r),nt=normalizedTime(r);
+    if(!eventMap[k]) eventMap[k]={stroke:r.stroke,distance:r.distance,bestNt:nt,bestTimeSec:r.timeSec,bestCourse:meet.course,bestType:r.type,bestMeetName:meet.name,bestDate:getMeetPrimaryDate(meet),count:0};
+    eventMap[k].count++;
+    if(nt<eventMap[k].bestNt){eventMap[k].bestNt=nt;eventMap[k].bestTimeSec=r.timeSec;eventMap[k].bestCourse=meet.course;eventMap[k].bestType=r.type;eventMap[k].bestMeetName=meet.name;eventMap[k].bestDate=getMeetPrimaryDate(meet);}
+  });
+  if(!Object.keys(eventMap).length){list.appendChild(el('div','empty-state','該当する記録がありません。'));return;}
+  STROKE_ORDER.forEach(function(code){
+    var info=STROKE_INFO[code];
+    var events=Object.keys(eventMap).filter(function(k){return eventMap[k].stroke===code;});
+    if(!events.length) return;
+    events.sort(function(a,b){return eventMap[a].distance-eventMap[b].distance;});
+    var section=el('div','stroke-section'); section.style.setProperty('--stroke-accent',info.color);
+    var hdr=el('div','stroke-section-header');
+    hdr.appendChild(el('span','stroke-section-dot'));
+    var nameEl=el('span','stroke-section-name',info.jp); nameEl.appendChild(el('span','stroke-section-code',' '+code)); hdr.appendChild(nameEl);
+    section.appendChild(hdr);
+    var wrap=el('div');
+    events.forEach(function(k){
+      var ev=eventMap[k];
+      var row=el('div','best-row'); row.style.setProperty('--stroke-accent',info.color);
+      var main=el('div','best-main');
+      main.appendChild(el('span','best-event',ev.distance+'m'));
+      main.appendChild(el('span','best-meta',formatDateJP(ev.bestDate)+' '+ev.bestMeetName+' · '+COURSE_SHORT[ev.bestCourse]+' · '+TYPE_LABEL[ev.bestType]));
+      row.appendChild(main);
+      var right=el('div','best-right');
+      right.appendChild(el('span','best-time',formatTime(ev.bestTimeSec)));
+      right.appendChild(el('span','best-count',ev.count+'件 ›'));
+      row.appendChild(right);
+      row.addEventListener('click',function(){openHistory(code,ev.distance);}); wrap.appendChild(row);
+    });
+    section.appendChild(wrap); list.appendChild(section);
+  });
+}
+['bcAll','bcSC','bcLC'].forEach(function(id){document.getElementById(id).addEventListener('click',function(){bestsCourseFilter=this.dataset.course;renderBests();});});
+
+/* ---- History overlay ---- */
+var historyOverlay=document.getElementById('historyOverlay');
+function openHistory(stroke,distance){
+  var info=STROKE_INFO[stroke]||STROKE_INFO.Fr;
+  document.getElementById('historyTitle').textContent=stroke+' '+distance+'m タイム推移';
+  document.getElementById('historySubtitle').textContent=info.jp+' · コース・個人/継を横断して比較';
+  var histRecords=records.filter(function(r){
+    var meet=getMeet(r.meetId); if(!meet) return false;
+    if(bestsCourseFilter!=='ALL'&&meet.course!==bestsCourseFilter) return false;
+    return r.stroke===stroke&&r.distance===distance;
+  }).sort(function(a,b){
+    var ma=getMeet(a.meetId),mb=getMeet(b.meetId); if(!ma||!mb) return 0;
+    return getMeetPrimaryDate(ma)<getMeetPrimaryDate(mb)?1:-1;
+  });
+  var bestNt=histRecords.reduce(function(best,r){var nt=normalizedTime(r);return nt<best?nt:best;},Infinity);
+  var wrap=document.getElementById('historyList'); wrap.innerHTML='';
+  if(!histRecords.length){wrap.appendChild(el('div','history-empty','記録がありません。'));historyOverlay.classList.add('open');return;}
+  histRecords.forEach(function(r){
+    var meet=getMeet(r.meetId); if(!meet) return;
+    var row=el('div','history-row');
+    var left=el('div','history-left');
+    left.appendChild(el('span','history-date',formatMeetDates(meet)));
+    left.appendChild(el('span','history-meet',meet.name+' · '+COURSE_SHORT[meet.course]+' · '+TYPE_LABEL[r.type]));
+    row.appendChild(left);
+    var right=el('div','history-right');
+    right.appendChild(el('span','history-time',formatTime(r.timeSec)));
+    if(Math.abs(normalizedTime(r)-bestNt)<0.001) right.appendChild(el('span','history-delta best','★ 自己ベスト'));
+    row.appendChild(right); wrap.appendChild(row);
+  });
+  historyOverlay.classList.add('open');
+}
+document.getElementById('closeHistoryBtn').addEventListener('click',function(){historyOverlay.classList.remove('open');});
+historyOverlay.addEventListener('click',function(e){if(e.target===historyOverlay)historyOverlay.classList.remove('open');});
+
+/* ---- Time utils ---- */
+function parseTime(str){
+  str=(str||'').trim();
+  var m=str.match(/^(?:(\d+):)?(\d{1,2}(?:\.\d{1,3})?)$/); if(!m) return null;
+  var sec=parseFloat(m[2]); if(isNaN(sec)) return null;
+  return (m[1]?parseInt(m[1],10):0)*60+sec;
+}
+function formatTime(s){
+  var min=Math.floor(s/60),sec=s-min*60;
+  if(min>0){var ss=sec.toFixed(2);if(sec<10)ss='0'+ss;return min+':'+ss;}
+  return sec.toFixed(2);
+}
+
+/* ---- Multi-date input helpers ---- */
+function renderDateRows(wrapId,datesArr,onRemove){
+  var wrap=document.getElementById(wrapId); wrap.innerHTML='';
+  datesArr.forEach(function(d,i){
+    var row=el('div','date-row');
+    var inp=document.createElement('input'); inp.type='date'; inp.value=d; inp.style.flex='1';
+    inp.addEventListener('change',function(){datesArr[i]=this.value;});
+    row.appendChild(inp);
+    if(datesArr.length>1){
+      var rm=el('button','date-rm-btn','×'); rm.type='button';
+      rm.addEventListener('click',function(){onRemove(i);});
+      row.appendChild(rm);
+    }
+    wrap.appendChild(row);
+  });
+}
+
+/* ---- Segmented helper ---- */
+function bindSegmented(wrapId,getVal,setVal){
+  var wrap=document.getElementById(wrapId);
+  function sync(){Array.prototype.forEach.call(wrap.children,function(btn){btn.classList.toggle('active',btn.dataset.value===getVal());});}
+  Array.prototype.forEach.call(wrap.children,function(btn){btn.addEventListener('click',function(){setVal(btn.dataset.value);sync();});});
+  sync(); return sync;
+}
+
+/* ---- Meet picker ---- */
+var meetPickerOverlay=document.getElementById('meetPickerOverlay');
+var newMeetCourse='SC';
+var syncNewMeetCourse=bindSegmented('newMeetCourseSegmented',function(){return newMeetCourse;},function(v){newMeetCourse=v;});
+function renderNewMeetDates(){
+  renderDateRows('newMeetDatesWrap',newMeetDates,function(i){newMeetDates.splice(i,1);renderNewMeetDates();});
+}
+document.getElementById('addNewMeetDateBtn').addEventListener('click',function(){newMeetDates.push('');renderNewMeetDates();});
+function openMeetPicker(){
+  document.getElementById('newMeetForm').classList.add('hidden');
+  document.getElementById('newMeetName').value='';
+  newMeetDates=[todayStr()]; renderNewMeetDates();
+  newMeetCourse='SC'; syncNewMeetCourse();
+  document.getElementById('newMeetError').textContent='';
+  renderMeetList(); meetPickerOverlay.classList.add('open');
+}
+function closeMeetPicker(){meetPickerOverlay.classList.remove('open');}
+function renderMeetList(){
+  var wrap=document.getElementById('meetListWrap'); wrap.innerHTML='';
+  document.getElementById('recentMeetsTitle').classList.toggle('hidden',!meets.length);
+  meets.slice().sort(function(a,b){return getMeetPrimaryDate(a)<getMeetPrimaryDate(b)?1:-1;}).forEach(function(meet){
+    var item=el('div','meet-list-item');
+    var tw=el('div'); tw.style.minWidth='0';
+    tw.appendChild(el('div','mli-name',meet.name));
+    tw.appendChild(el('div','mli-meta',formatMeetDates(meet)+' · '+COURSE_SHORT[meet.course]));
+    item.appendChild(tw); item.appendChild(el('span','course-badge',COURSE_SHORT[meet.course]));
+    item.addEventListener('click',function(){activeMeetId=meet.id;setLastMeetId(meet.id);closeMeetPicker();openRecordModal(meet.id,null);});
+    wrap.appendChild(item);
+  });
+}
+document.getElementById('showNewMeetFormBtn').addEventListener('click',function(){document.getElementById('newMeetForm').classList.toggle('hidden');});
+document.getElementById('closeMeetPickerBtn').addEventListener('click',closeMeetPicker);
+meetPickerOverlay.addEventListener('click',function(e){if(e.target===meetPickerOverlay)closeMeetPicker();});
+document.getElementById('createMeetBtn').addEventListener('click',function(){
+  var errEl=document.getElementById('newMeetError');
+  var name=document.getElementById('newMeetName').value.trim();
+  var dates=newMeetDates.filter(function(d){return d;}).slice().sort();
+  if(!name||!dates.length){errEl.textContent='大会名と日付を入力してください。';return;}
+  errEl.textContent='';
+  var meet={id:'m'+Date.now()+Math.random().toString(36).slice(2,7),name:name,dates:dates,course:newMeetCourse};
+  meets.push(meet); saveData(); activeMeetId=meet.id; setLastMeetId(meet.id);
+  closeMeetPicker(); openRecordModal(meet.id,null); renderLog();
+});
+
+/* ---- Meet edit ---- */
+var meetEditOverlay=document.getElementById('meetEditOverlay');
+var editMeetCourse='SC';
+var syncEditMeetCourse=bindSegmented('editMeetCourseSegmented',function(){return editMeetCourse;},function(v){editMeetCourse=v;});
+function renderEditMeetDates(){
+  renderDateRows('editMeetDatesWrap',editMeetDates,function(i){editMeetDates.splice(i,1);renderEditMeetDates();});
+}
+document.getElementById('addEditMeetDateBtn').addEventListener('click',function(){editMeetDates.push('');renderEditMeetDates();});
+function openMeetEdit(id){
+  var meet=getMeet(id); if(!meet) return;
+  editingMeetId=id;
+  document.getElementById('editMeetName').value=meet.name;
+  editMeetDates=(meet.dates&&meet.dates.length)?meet.dates.slice():[getMeetPrimaryDate(meet)||todayStr()];
+  renderEditMeetDates();
+  editMeetCourse=meet.course; syncEditMeetCourse();
+  document.getElementById('meetEditError').textContent='';
+  meetEditOverlay.classList.add('open');
+}
+function closeMeetEdit(){meetEditOverlay.classList.remove('open');editingMeetId=null;}
+document.getElementById('closeMeetEditBtn').addEventListener('click',closeMeetEdit);
+meetEditOverlay.addEventListener('click',function(e){if(e.target===meetEditOverlay)closeMeetEdit();});
+document.getElementById('saveMeetBtn').addEventListener('click',function(){
+  var meet=getMeet(editingMeetId); if(!meet) return;
+  var name=document.getElementById('editMeetName').value.trim();
+  var dates=editMeetDates.filter(function(d){return d;}).slice().sort();
+  if(!name||!dates.length){document.getElementById('meetEditError').textContent='大会名と日付を入力してください。';return;}
+  meet.name=name; meet.dates=dates; meet.course=editMeetCourse;
+  saveData(); closeMeetEdit(); renderLog(); showToast('大会情報を更新しました');
+});
+document.getElementById('deleteMeetBtn').addEventListener('click',function(){
+  var meet=getMeet(editingMeetId); if(!meet) return;
+  var cnt=records.filter(function(r){return r.meetId===meet.id;}).length;
+  if(!confirm('「'+meet.name+'」と記録'+cnt+'件を削除しますか？')) return;
+  records=records.filter(function(r){return r.meetId!==meet.id;});
+  meets=meets.filter(function(m){return m.id!==meet.id;});
+  saveData();
+  if(getLastMeetId()===meet.id)localStorage.removeItem(LAST_MEET_KEY);
+  closeMeetEdit(); renderLog(); showToast('大会を削除しました');
+});
+
+/* ---- Record modal ---- */
+var recordModalOverlay=document.getElementById('recordModalOverlay');
+var distanceInput=document.getElementById('distanceInput');
+(function(){
+  var wrap=document.getElementById('strokeChips');
+  STROKE_ORDER.forEach(function(code){
+    var chip=el('button','chip',code); chip.type='button';
+    chip.addEventListener('click',function(){recordFormState.stroke=code;syncStrokeChips();});
+    wrap.appendChild(chip);
+  });
+})();
+function syncStrokeChips(){
+  var wrap=document.getElementById('strokeChips');
+  Array.prototype.forEach.call(wrap.children,function(chip){
+    var match=chip.textContent===recordFormState.stroke;
+    chip.classList.toggle('active',match);
+    chip.style.background=match?STROKE_INFO[recordFormState.stroke].color:'';
+    chip.style.color=match?'#06222A':''; chip.style.borderColor=match?'transparent':'';
+  });
+}
+(function(){
+  var wrap=document.getElementById('distanceChips');
+  DISTANCES.forEach(function(d){
+    var chip=el('button','chip',d+'m'); chip.type='button';
+    chip.addEventListener('click',function(){distanceInput.value=d;syncDistanceChips();});
+    wrap.appendChild(chip);
+  });
+})();
+function syncDistanceChips(){
+  var val=distanceInput.value;
+  Array.prototype.forEach.call(document.getElementById('distanceChips').children,function(chip,i){chip.classList.toggle('active',String(DISTANCES[i])===String(val));});
+}
+distanceInput.addEventListener('input',syncDistanceChips);
+var syncTypeSeg=bindSegmented('typeSegmented',function(){return recordFormState.type;},function(v){recordFormState.type=v;});
+function refreshContextBar(){
+  var meet=getMeet(activeMeetId); if(!meet) return;
+  document.getElementById('contextMeetName').textContent=meet.name;
+  document.getElementById('contextMeetMeta').textContent=formatMeetDates(meet)+' · '+COURSE_SHORT[meet.course];
+}
+function resetRecordFields(){
+  distanceInput.value=''; document.getElementById('timeInput').value=''; document.getElementById('formError').textContent='';
+  recordFormState={stroke:null,type:'IND'}; syncStrokeChips(); syncDistanceChips(); syncTypeSeg();
+}
+function openRecordModal(meetId,recordId){
+  var meet=getMeet(meetId); if(!meet){openMeetPicker();return;}
+  activeMeetId=meetId; editingRecordId=recordId||null;
+  resetRecordFields(); refreshContextBar();
+  if(editingRecordId){
+    var r=records.find(function(x){return x.id===editingRecordId;});
+    if(r){recordFormState.stroke=r.stroke;recordFormState.type=r.type;distanceInput.value=r.distance;document.getElementById('timeInput').value=formatTime(r.timeSec);syncStrokeChips();syncDistanceChips();syncTypeSeg();}
+    document.getElementById('recordModalTitle').textContent='記録を編集';
+    document.getElementById('deleteRecordBtn').classList.remove('hidden');
+    document.getElementById('saveRecordBtn').textContent='保存';
+    document.getElementById('changeMeetBtn').classList.add('hidden');
+  } else {
+    document.getElementById('recordModalTitle').textContent='記録を追加';
+    document.getElementById('deleteRecordBtn').classList.add('hidden');
+    document.getElementById('saveRecordBtn').textContent='保存して続けて追加';
+    document.getElementById('changeMeetBtn').classList.remove('hidden');
+  }
+  recordModalOverlay.classList.add('open');
+  setTimeout(function(){document.getElementById('timeInput').focus();},50);
+}
+function closeRecordModal(){recordModalOverlay.classList.remove('open');editingRecordId=null;}
+document.getElementById('addBtn').addEventListener('click',function(){var lastId=getLastMeetId();if(lastId&&getMeet(lastId))openRecordModal(lastId,null);else openMeetPicker();});
+document.getElementById('closeRecordModalBtn').addEventListener('click',closeRecordModal);
+recordModalOverlay.addEventListener('click',function(e){if(e.target===recordModalOverlay)closeRecordModal();});
+document.getElementById('changeMeetBtn').addEventListener('click',function(){closeRecordModal();openMeetPicker();});
+document.getElementById('recordForm').addEventListener('submit',function(e){
+  e.preventDefault();
+  var errEl=document.getElementById('formError'); errEl.textContent='';
+  var meet=getMeet(activeMeetId); if(!meet){errEl.textContent='大会が見つかりません。';return;}
+  var dist=parseInt(distanceInput.value,10),timeSec=parseTime(document.getElementById('timeInput').value);
+  if(!recordFormState.stroke){errEl.textContent='種目を選択してください。';return;}
+  if(!dist||dist<=0){errEl.textContent='距離を入力してください。';return;}
+  if(timeSec===null){errEl.textContent='タイムの形式が正しくありません（例: 58.23 / 1:02.35）。';return;}
+  if(editingRecordId){
+    var r=records.find(function(x){return x.id===editingRecordId;});
+    r.stroke=recordFormState.stroke;r.distance=dist;r.type=recordFormState.type;r.timeSec=timeSec;
+    saveData();closeRecordModal();renderLog();showToast('記録を更新しました');
+  } else {
+    records.push({id:'r'+Date.now()+Math.random().toString(36).slice(2,7),meetId:activeMeetId,stroke:recordFormState.stroke,distance:dist,type:recordFormState.type,timeSec:timeSec,createdAt:Date.now()});
+    saveData();renderLog();showToast('記録を追加しました');
+    resetRecordFields();setTimeout(function(){document.getElementById('timeInput').focus();},30);
+  }
+});
+document.getElementById('deleteRecordBtn').addEventListener('click',function(){
+  if(!editingRecordId) return;
+  if(!confirm('この記録を削除しますか？')) return;
+  records=records.filter(function(x){return x.id!==editingRecordId;});
+  saveData();closeRecordModal();renderLog();showToast('記録を削除しました');
+});
+
+/* ---- Settings ---- */
+var settingsOverlay=document.getElementById('settingsOverlay');
+document.getElementById('settingsBtn').addEventListener('click',function(){settingsOverlay.classList.add('open');});
+document.getElementById('closeSettingsBtn').addEventListener('click',function(){settingsOverlay.classList.remove('open');});
+settingsOverlay.addEventListener('click',function(e){if(e.target===settingsOverlay)settingsOverlay.classList.remove('open');});
+document.getElementById('exportBtn').addEventListener('click',function(){
+  var blob=new Blob([JSON.stringify({meets:meets,records:records},null,2)],{type:'application/json'});
+  var url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download='swim-log-'+todayStr()+'.json';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+  showToast('JSONを書き出しました');
+});
+document.getElementById('importBtn').addEventListener('click',function(){document.getElementById('importFile').click();});
+document.getElementById('importFile').addEventListener('change',function(e){
+  var file=e.target.files[0];if(!file) return;
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    try{
+      var data=JSON.parse(ev.target.result);
+      if(Array.isArray(data)){var mg=migrateFlatRecords(data);meets=mg.meets;records=mg.records;}
+      else if(data&&Array.isArray(data.meets)&&Array.isArray(data.records)){
+        meets=data.meets;records=data.records;
+        // normalize date → dates
+        meets.forEach(function(m){if(!m.dates){m.dates=m.date?[m.date]:[];delete m.date;}});
+      }else throw new Error();
+      saveData();renderLog();settingsOverlay.classList.remove('open');showToast('データを読み込みました');
+    }catch(err){alert('ファイルの読み込みに失敗しました。');}
+  };
+  reader.readAsText(file);e.target.value='';
+});
+document.getElementById('clearAllBtn').addEventListener('click',function(){
+  if(!confirm('すべてのデータを削除しますか？')) return;
+  meets=[];records=[];saveData();localStorage.removeItem(LAST_MEET_KEY);
+  renderLog();settingsOverlay.classList.remove('open');showToast('すべてのデータを削除しました');
+});
+
+/* ---- Toast ---- */
+var toastTimer=null;
+function showToast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(function(){t.classList.remove('show');},1800);}
+
+/* ---- PWA ---- */
+function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+function generateIcon(size){
+  var canvas=document.createElement('canvas');canvas.width=size;canvas.height=size;
+  var ctx=canvas.getContext('2d');
+  var grad=ctx.createLinearGradient(0,0,size,size);grad.addColorStop(0,'#0A1E2E');grad.addColorStop(1,'#123448');
+  roundRect(ctx,0,0,size,size,size*0.22);ctx.fillStyle=grad;ctx.fill();
+  ctx.strokeStyle='#2FD3C9';ctx.lineWidth=size*0.06;ctx.lineCap='round';
+  ctx.beginPath();var my=size*0.58;ctx.moveTo(size*0.12,my);ctx.bezierCurveTo(size*0.28,my-size*0.13,size*0.36,my+size*0.13,size*0.5,my);ctx.bezierCurveTo(size*0.64,my-size*0.13,size*0.72,my+size*0.13,size*0.88,my);ctx.stroke();
+  ctx.strokeStyle='#FFCB66';ctx.lineWidth=size*0.035;
+  ctx.beginPath();var my2=size*0.74;ctx.moveTo(size*0.18,my2);ctx.bezierCurveTo(size*0.32,my2-size*0.08,size*0.4,my2+size*0.08,size*0.54,my2);ctx.bezierCurveTo(size*0.68,my2-size*0.08,size*0.76,my2+size*0.08,size*0.9,my2);ctx.stroke();
+  ctx.fillStyle='#EAF6F6';ctx.beginPath();ctx.arc(size*0.5,size*0.3,size*0.075,0,Math.PI*2);ctx.fill();
+  return canvas.toDataURL('image/png');
+}
+function setupPWA(){
+  var i192=generateIcon(192),i512=generateIcon(512);
+  document.getElementById('appleTouchIcon').setAttribute('href',i192);
+  document.getElementById('faviconLink').setAttribute('href',i192);
+  var manifest={name:'タイム記録',short_name:'タイム記録',start_url:'.',display:'standalone',background_color:'#0A1E2E',theme_color:'#0A1E2E',icons:[{src:i192,sizes:'192x192',type:'image/png'},{src:i512,sizes:'512x512',type:'image/png'}]};
+  document.getElementById('manifestLink').setAttribute('href',URL.createObjectURL(new Blob([JSON.stringify(manifest)],{type:'application/json'})));
+}
+
+setupPWA();
+renderLog();
+})();
+</script>
+</body>
+</html>
