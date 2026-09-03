@@ -291,7 +291,7 @@
         <button type="button" data-value="REL">引き継ぎ</button>
       </div>
       <label for="timeInput">タイム</label>
-      <input type="text" id="timeInput" required placeholder="例: 58.23 / 1:02.35" inputmode="decimal">
+      <input type="text" id="timeInput" required placeholder="数字だけ入力 (例: 5823→58.23)" inputmode="numeric">
       <p class="form-error" id="formError"></p>
       <div class="modal-actions">
         <button type="button" class="btn btn-danger hidden" id="deleteRecordBtn">削除</button>
@@ -728,6 +728,19 @@ function syncDistanceChips(){
   Array.prototype.forEach.call(document.getElementById('distanceChips').children,function(chip,i){chip.classList.toggle('active',String(DISTANCES[i])===String(val));});
 }
 distanceInput.addEventListener('input',syncDistanceChips);
+function formatTimeDigits(digits){
+  var n=digits.length;
+  if(n===0) return '';
+  if(n<=2) return digits;
+  var hh=digits.slice(-2), rest=digits.slice(0,-2);
+  if(rest.length<=2) return rest+'.'+hh;
+  var mm=rest.slice(0,-2), ss=rest.slice(-2);
+  return mm+':'+ss+'.'+hh;
+}
+document.getElementById('timeInput').addEventListener('input',function(){
+  var digits=this.value.replace(/\D/g,'').slice(-6);
+  this.value=formatTimeDigits(digits);
+});
 var syncTypeSeg=bindSegmented('typeSegmented',function(){return recordFormState.type;},function(v){recordFormState.type=v;});
 function refreshContextBar(){
   var meet=getMeet(activeMeetId); if(!meet) return;
