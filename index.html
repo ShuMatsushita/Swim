@@ -123,6 +123,14 @@
   input:focus,textarea:focus{border-color:var(--aqua);}
   textarea{width:100%;min-height:150px;background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-sm);padding:12px;font-size:16px;font-family:var(--font-mono);line-height:1.6;resize:vertical;}
   #bulkOverlay{z-index:55;}
+  .help details{border-bottom:1px solid var(--border);}
+  .help summary{padding:13px 0;font-size:14px;font-weight:600;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;}
+  .help summary::-webkit-details-marker{display:none;}
+  .help summary::after{content:'＋';color:var(--aqua);font-weight:700;}
+  .help details[open] summary::after{content:'－';}
+  .help .help-body{font-size:12.5px;line-height:1.8;color:var(--text-muted);padding:0 0 14px;}
+  .help .help-body b{color:var(--text);}
+  .help .help-body code{font-family:var(--font-mono);color:var(--aqua);}
   .bulk-open-btn{margin-top:12px;width:100%;min-height:44px;border-radius:var(--radius-sm);border:1px dashed var(--aqua);background:rgba(47,211,201,.06);color:var(--aqua);font-weight:700;font-size:13.5px;cursor:pointer;}
   .bulk-hint{font-size:11.5px;color:var(--text-muted);line-height:1.7;margin-top:8px;}
   .bulk-preview{font-size:12.5px;line-height:1.7;margin-top:10px;font-family:var(--font-mono);}
@@ -217,6 +225,32 @@
 <div class="modal-overlay" id="settingsOverlay">
   <div class="modal">
     <div class="modal-header"><h2>設定</h2><button class="icon-btn" id="closeSettingsBtn">✕</button></div>
+    <p class="section-title">使い方</p>
+    <div class="help">
+      <details><summary>タイムの入力のしかた</summary><div class="help-body">
+        数字だけ打てば自動でタイム表記になります（コロンやピリオドは不要）。<br>
+        下2桁が100分の1秒、その前が秒、さらに前が分です。<br>
+        <code>5823</code> → <b>58.23</b>　／　<code>10235</code> → <b>1:02.35</b>　／　<code>22010</code> → <b>2:20.10</b>
+      </div></details>
+      <details><summary>まとめて入力（貼り付け）</summary><div class="help-body">
+        記録追加画面の下の「まとめて入力」から。1行に1種目を書きます。<br>
+        書式：<b>距離＋種目 タイム</b>　例 <code>50Fr 28.39</code>、<code>100自由形 1:02.35</code>、<code>200IM 2:20.1</code><br>
+        種目：Fr / Fly / Ba / Br / IM、または 自由形・バタフライ・背泳ぎ・平泳ぎ・個メ<br>
+        先頭に <code>R</code>（またはリレー）を付けると引き継ぎ。<code>R 100Fr 55.20</code><br>
+        ✓ は読み取れた行、✗ は直す必要がある行です。✗ が残っていると追加されません。大会は、追加画面で選んでいるものに登録されます。
+      </div></details>
+      <details><summary>記録の修正・削除</summary><div class="help-body">
+        記録一覧で記録をタップすると、編集・削除ができます。大会の名前・日付・コースは大会名のところから編集できます。
+      </div></details>
+      <details><summary>スプレッドシートで管理する（CSV）</summary><div class="help-body">
+        <b>1.</b> 下の「CSVを書き出す」でファイルを保存し、Googleスプレッドシート等で開きます。<br>
+        <b>2.</b> 記録を直すときは<b>「秒」列</b>の数値を書き換えます（IDは変えない）。<br>
+        <b>3.</b> 記録を足すときは<b>IDを空</b>にして、大会名・日付・コース(SC/LC)・種目・距離・区分・タイムを書きます。<br>
+        <b>4.</b> CSVで書き出して「CSVを読み込む」。IDが一致する行は更新、IDが空の行は追加されます。<br>
+        ※ CSVでは削除できません（アプリで削除）。形式が不正な行があると、何も変更せず中止して知らせます。<br>
+        ※ バックアップ・端末移行には「JSON」を使います。JSONの読み込みは全データの置き換えです。
+      </div></details>
+    </div>
     <p class="section-title">データのバックアップ</p>
     <div class="settings-row"><span>JSONをエクスポート</span><button class="small-btn" id="exportBtn">書き出す</button></div>
     <div class="settings-row"><span>JSONを読み込む</span><button class="small-btn" id="importBtn">読み込む</button><input type="file" id="importFile" accept="application/json" class="hidden"></div>
