@@ -120,7 +120,14 @@
   label,.field-label{display:block;font-size:12.5px;color:var(--text-muted);margin:14px 0 6px;}
   input[type=text],input[type=number]{width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-sm);padding:12px;font-size:16px;font-family:var(--font-body);}
   input[type=date]{background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-sm);padding:11px 12px;font-size:16px;font-family:var(--font-body);min-height:44px;}
-  input:focus{border-color:var(--aqua);}
+  input:focus,textarea:focus{border-color:var(--aqua);}
+  textarea{width:100%;min-height:150px;background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-sm);padding:12px;font-size:16px;font-family:var(--font-mono);line-height:1.6;resize:vertical;}
+  #bulkOverlay{z-index:55;}
+  .bulk-open-btn{margin-top:12px;width:100%;min-height:44px;border-radius:var(--radius-sm);border:1px dashed var(--aqua);background:rgba(47,211,201,.06);color:var(--aqua);font-weight:700;font-size:13.5px;cursor:pointer;}
+  .bulk-hint{font-size:11.5px;color:var(--text-muted);line-height:1.7;margin-top:8px;}
+  .bulk-preview{font-size:12.5px;line-height:1.7;margin-top:10px;font-family:var(--font-mono);}
+  .bulk-preview .ok{color:var(--success);}
+  .bulk-preview .ng{color:var(--danger);}
   /* 複数日付入力 */
   .date-rows{display:flex;flex-direction:column;gap:8px;}
   .date-row{display:flex;align-items:center;gap:8px;}
@@ -213,6 +220,10 @@
     <p class="section-title">データのバックアップ</p>
     <div class="settings-row"><span>JSONをエクスポート</span><button class="small-btn" id="exportBtn">書き出す</button></div>
     <div class="settings-row"><span>JSONを読み込む</span><button class="small-btn" id="importBtn">読み込む</button><input type="file" id="importFile" accept="application/json" class="hidden"></div>
+    <p class="section-title">CSV（スプレッドシート用）</p>
+    <div class="settings-row"><span>CSVを書き出す</span><button class="small-btn" id="exportCsvBtn">書き出す</button></div>
+    <div class="settings-row"><span>CSVを読み込む（追加・更新）</span><button class="small-btn" id="importCsvBtn">読み込む</button><input type="file" id="importCsvFile" accept=".csv,text/csv,text/plain" class="hidden"></div>
+    <p style="font-size:11.5px;color:var(--text-muted);line-height:1.6;margin-top:6px;">既存の記録は消さず、「ID」列が一致する行は更新、IDが空の行は新規追加します（CSVでの削除はできません）。</p>
     <p class="section-title">データの削除</p>
     <div class="settings-row"><span>すべてのデータを削除</span><button class="small-btn danger" id="clearAllBtn">削除</button></div>
     <p style="font-size:11.5px;color:var(--text-muted);margin-top:18px;line-height:1.6;">共有メニューから「ホーム画面に追加」するとアプリのように使えます。</p>
@@ -268,6 +279,21 @@
   </div>
 </div>
 
+<!-- Bulk add -->
+<div class="modal-overlay" id="bulkOverlay">
+  <div class="modal">
+    <div class="modal-header"><h2>まとめて入力</h2><button class="icon-btn" id="closeBulkBtn">✕</button></div>
+    <div class="context-bar"><div class="context-bar-text"><div class="ctx-name" id="bulkMeetName">—</div><div class="ctx-meta" id="bulkMeetMeta">—</div></div></div>
+    <label for="bulkText">1行につき1種目</label>
+    <textarea id="bulkText" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="50Fr 28.39&#10;100Fr 1:02.35&#10;200IM 2:20.1&#10;R 100Fr 55.20"></textarea>
+    <p class="bulk-hint">書き方：<b>距離＋種目 タイム</b>（例 <b>50Fr 28.39</b>、<b>100自由形 1:02.35</b>）。種目は Fr / Fly / Ba / Br / IM、または 自由形・バタフライ・背泳ぎ・平泳ぎ・個メ。先頭に <b>R</b> かリレーを付けると引き継ぎになります。表計算ソフトからの貼り付けも読み取れます。</p>
+    <div class="bulk-preview" id="bulkPreview"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-primary" id="bulkSaveBtn">追加する</button>
+    </div>
+  </div>
+</div>
+
 <!-- Record add/edit -->
 <div class="modal-overlay" id="recordModalOverlay">
   <div class="modal">
@@ -298,6 +324,7 @@
         <button type="submit" class="btn btn-primary" id="saveRecordBtn">保存して続けて追加</button>
       </div>
     </form>
+    <button type="button" class="bulk-open-btn" id="openBulkBtn">📋 まとめて入力（貼り付け）</button>
   </div>
 </div>
 
@@ -762,11 +789,13 @@ function openRecordModal(meetId,recordId){
     document.getElementById('deleteRecordBtn').classList.remove('hidden');
     document.getElementById('saveRecordBtn').textContent='保存';
     document.getElementById('changeMeetBtn').classList.add('hidden');
+    document.getElementById('openBulkBtn').classList.add('hidden');
   } else {
     document.getElementById('recordModalTitle').textContent='記録を追加';
     document.getElementById('deleteRecordBtn').classList.add('hidden');
     document.getElementById('saveRecordBtn').textContent='保存して続けて追加';
     document.getElementById('changeMeetBtn').classList.remove('hidden');
+    document.getElementById('openBulkBtn').classList.remove('hidden');
   }
   recordModalOverlay.classList.add('open');
   setTimeout(function(){document.getElementById('timeInput').focus();},50);
@@ -831,6 +860,178 @@ document.getElementById('importFile').addEventListener('change',function(e){
   };
   reader.readAsText(file);e.target.value='';
 });
+/* ---- Bulk input (paste) ---- */
+var STROKE_ALIAS={fr:'Fr',free:'Fr',freestyle:'Fr','フリー':'Fr','自由形':'Fr','自':'Fr',
+  fly:'Fly',butterfly:'Fly','バタフライ':'Fly','バタ':'Fly','バ':'Fly',
+  ba:'Ba',back:'Ba',backstroke:'Ba','背泳ぎ':'Ba','背泳':'Ba','背':'Ba',
+  br:'Br',breast:'Br',breaststroke:'Br','平泳ぎ':'Br','平泳':'Br','平':'Br',
+  im:'IM',medley:'IM','個メ':'IM','個人メドレー':'IM','メドレー':'IM','個人メ':'IM'};
+function normalizeLine(s){
+  return (s||'').normalize('NFKC').replace(/[\t,、，]+/g,' ').replace(/\s+/g,' ').trim();
+}
+function parseTimeLoose(tok){
+  tok=(tok||'').trim();
+  if(/^\d+$/.test(tok)&&tok.length>=3) tok=formatTimeDigits(tok.slice(-6));
+  var h=tok.match(/^(\d+):(\d{2}):(\d{2}(?:\.\d+)?)$/); // 0:01:02.350 形式（表計算ソフト由来）
+  if(h) return parseInt(h[1],10)*3600+parseInt(h[2],10)*60+parseFloat(h[3]);
+  return parseTime(tok);
+}
+function parseBulkLine(raw){
+  var line=normalizeLine(raw); if(!line) return null;
+  var type='IND';
+  var rm=line.match(/^(?:r|リレー|引き?継ぎ|引継)\s*/i);
+  if(rm){type='REL';line=line.slice(rm[0].length);}
+  line=line.replace(/(\d)m\b/i,'$1');
+  var m=line.match(/^(\d{2,4})\s*([^\d\s:.]+)\s+([\d:.]+)$/i);
+  var dist,strokeTxt,timeTxt;
+  if(m){dist=m[1];strokeTxt=m[2];timeTxt=m[3];}
+  else{
+    m=line.match(/^([^\d\s:.]+)\s*(\d{2,4})\s+([\d:.]+)$/i);
+    if(!m) return {error:'形式が読み取れません'};
+    strokeTxt=m[1];dist=m[2];timeTxt=m[3];
+  }
+  var stroke=STROKE_ALIAS[strokeTxt.toLowerCase()];
+  if(!stroke) return {error:'種目「'+strokeTxt+'」が不明です'};
+  var d=parseInt(dist,10);
+  if(!d||d%25!==0) return {error:'距離「'+dist+'」が正しくありません'};
+  var t=parseTimeLoose(timeTxt);
+  if(t===null||t<=0) return {error:'タイム「'+timeTxt+'」が正しくありません'};
+  return {stroke:stroke,distance:d,type:type,timeSec:t};
+}
+function parseBulkText(text){
+  var items=[],errors=[];
+  (text||'').split(/\r?\n/).forEach(function(raw,i){
+    var r=parseBulkLine(raw); if(!r) return;
+    if(r.error) errors.push({line:i+1,msg:r.error,raw:raw.trim()}); else items.push(r);
+  });
+  return {items:items,errors:errors};
+}
+function renderBulkPreview(){
+  var res=parseBulkText(document.getElementById('bulkText').value);
+  var box=document.getElementById('bulkPreview'); box.innerHTML='';
+  res.items.forEach(function(it){
+    var d=document.createElement('div'); d.className='ok';
+    d.textContent='✓ '+it.distance+'m '+STROKE_INFO[it.stroke].jp+(it.type==='REL'?'（引き継ぎ）':'')+'  '+formatTime(it.timeSec);
+    box.appendChild(d);
+  });
+  res.errors.forEach(function(e){
+    var d=document.createElement('div'); d.className='ng';
+    d.textContent='✗ '+e.line+'行目: '+e.msg+'（'+e.raw+'）';
+    box.appendChild(d);
+  });
+  return res;
+}
+document.getElementById('bulkText').addEventListener('input',renderBulkPreview);
+document.getElementById('openBulkBtn').addEventListener('click',function(){
+  var meet=getMeet(activeMeetId); if(!meet) return;
+  document.getElementById('bulkMeetName').textContent=meet.name;
+  document.getElementById('bulkMeetMeta').textContent=formatMeetDates(meet)+' · '+COURSE_SHORT[meet.course];
+  document.getElementById('bulkText').value=''; document.getElementById('bulkPreview').innerHTML='';
+  document.getElementById('bulkOverlay').classList.add('open');
+  setTimeout(function(){document.getElementById('bulkText').focus();},50);
+});
+document.getElementById('closeBulkBtn').addEventListener('click',function(){document.getElementById('bulkOverlay').classList.remove('open');});
+document.getElementById('bulkOverlay').addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});
+document.getElementById('bulkSaveBtn').addEventListener('click',function(){
+  var res=renderBulkPreview();
+  if(res.errors.length){showToast('✗の行を直してください');return;}
+  if(!res.items.length){showToast('追加する行がありません');return;}
+  var now=Date.now();
+  res.items.forEach(function(it,i){
+    records.push({id:'r'+(now+i)+Math.random().toString(36).slice(2,7),meetId:activeMeetId,stroke:it.stroke,distance:it.distance,type:it.type,timeSec:it.timeSec,createdAt:now+i});
+  });
+  saveData();renderLog();
+  document.getElementById('bulkOverlay').classList.remove('open');closeRecordModal();
+  showToast(res.items.length+'件の記録を追加しました');
+});
+
+/* ---- CSV export / import ---- */
+var CSV_HEADER=['ID','大会名','日付','コース','種目','距離','区分','タイム','秒'];
+function csvCell(v){v=(v==null?'':String(v));return /[",\r\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
+function parseCSV(text){
+  var rows=[],row=[],cell='',q=false;
+  text=text.replace(/^﻿/,'');
+  for(var i=0;i<text.length;i++){
+    var c=text[i];
+    if(q){
+      if(c==='"'){ if(text[i+1]==='"'){cell+='"';i++;} else q=false; }
+      else cell+=c;
+    }else if(c==='"') q=true;
+    else if(c===','){row.push(cell);cell='';}
+    else if(c==='\n'||c==='\r'){ if(c==='\r'&&text[i+1]==='\n')i++; row.push(cell);cell='';rows.push(row);row=[]; }
+    else cell+=c;
+  }
+  if(cell!==''||row.length){row.push(cell);rows.push(row);}
+  return rows.filter(function(r){return r.some(function(x){return x.trim()!=='';});});
+}
+document.getElementById('exportCsvBtn').addEventListener('click',function(){
+  var lines=[CSV_HEADER.map(csvCell).join(',')];
+  var sorted=records.slice().sort(function(a,b){
+    var ma=getMeet(a.meetId),mb=getMeet(b.meetId);
+    var da=ma?getMeetPrimaryDate(ma):'',db=mb?getMeetPrimaryDate(mb):'';
+    if(da!==db) return da<db?-1:1;
+    var sa=STROKE_ORDER.indexOf(a.stroke),sb=STROKE_ORDER.indexOf(b.stroke);
+    return sa!==sb?sa-sb:a.distance-b.distance;
+  });
+  sorted.forEach(function(r){
+    var m=getMeet(r.meetId); if(!m) return;
+    lines.push([r.id,m.name,(m.dates||[]).filter(Boolean).join(';'),m.course,STROKE_INFO[r.stroke]?r.stroke:'Fr',r.distance,r.type==='REL'?'引き継ぎ':'個人',formatTime(r.timeSec),Math.round(r.timeSec*1000)/1000].map(csvCell).join(','));
+  });
+  var blob=new Blob(['﻿'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'});
+  var url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download='swim-log-'+todayStr()+'.csv';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+  showToast('CSVを書き出しました');
+});
+document.getElementById('importCsvBtn').addEventListener('click',function(){document.getElementById('importCsvFile').click();});
+document.getElementById('importCsvFile').addEventListener('change',function(e){
+  var file=e.target.files[0]; if(!file) return;
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    var rows=parseCSV(ev.target.result||'');
+    if(rows.length<2){alert('CSVにデータ行がありません。');return;}
+    var head=rows[0].map(function(h){return h.trim();});
+    var col={}; CSV_HEADER.forEach(function(h){col[h]=head.indexOf(h);});
+    if(col['大会名']<0||col['種目']<0||col['距離']<0||(col['タイム']<0&&col['秒']<0)){alert('見出し行が正しくありません。書き出したCSVの見出し（大会名・種目・距離・タイム など）を残してください。');return;}
+    function get(r,h){return col[h]>=0?(r[col[h]]||'').normalize('NFKC').trim():'';}
+    var added=0,updated=0,errs=[];
+    var backupMeets=JSON.stringify(meets),backupRecords=JSON.stringify(records);
+    rows.slice(1).forEach(function(r,i){
+      var ln=i+2;
+      var name=get(r,'大会名'),dates=get(r,'日付').split(/[;；|]/).map(function(x){return x.trim();}).filter(Boolean);
+      var course=get(r,'コース').toUpperCase()==='LC'||/長/.test(get(r,'コース'))?'LC':'SC';
+      var stroke=STROKE_ALIAS[get(r,'種目').toLowerCase()];
+      var dist=parseInt(get(r,'距離'),10);
+      var type=/引|リレー|REL|^R$/i.test(get(r,'区分'))?'REL':'IND';
+      var id=get(r,'ID');
+      var existing=id?records.find(function(x){return x.id===id;}):null;
+      var tTime=get(r,'タイム')?parseTimeLoose(get(r,'タイム')):null;
+      var tSec=get(r,'秒')!==''&&!isNaN(parseFloat(get(r,'秒')))?parseFloat(get(r,'秒')):null;
+      var timeSec=null;
+      if(tTime!==null&&tSec!==null&&Math.abs(tTime-tSec)>0.0005){
+        if(existing) timeSec=Math.abs(tTime-existing.timeSec)>0.0005?tTime:tSec;
+        else timeSec=tTime;
+      }else timeSec=tTime!==null?tTime:tSec;
+      if(!name){errs.push(ln+'行目: 大会名が空です');return;}
+      if(!stroke){errs.push(ln+'行目: 種目が不明です');return;}
+      if(!dist||dist<=0){errs.push(ln+'行目: 距離が正しくありません');return;}
+      if(timeSec===null||timeSec<=0){errs.push(ln+'行目: タイムが正しくありません');return;}
+      var meet=meets.find(function(m){return m.name===name&&m.course===course&&(m.dates||[]).filter(Boolean).join(';')===dates.join(';');});
+      if(!meet){meet={id:'m'+Date.now()+Math.random().toString(36).slice(2,7),name:name,dates:dates.length?dates:[''],course:course};meets.push(meet);}
+      if(existing){existing.meetId=meet.id;existing.stroke=stroke;existing.distance=dist;existing.type=type;existing.timeSec=timeSec;updated++;}
+      else{records.push({id:'r'+Date.now()+i+Math.random().toString(36).slice(2,7),meetId:meet.id,stroke:stroke,distance:dist,type:type,timeSec:timeSec,createdAt:Date.now()+i});added++;}
+    });
+    if(errs.length){
+      meets=JSON.parse(backupMeets);records=JSON.parse(backupRecords);
+      alert('読み込みを中止しました（データは変更されていません）。\n'+errs.slice(0,8).join('\n')+(errs.length>8?'\n…ほか'+(errs.length-8)+'件':''));
+      return;
+    }
+    saveData();renderLog();settingsOverlay.classList.remove('open');
+    showToast('CSV: '+added+'件追加・'+updated+'件更新');
+  };
+  reader.readAsText(file,'utf-8');e.target.value='';
+});
+
 document.getElementById('clearAllBtn').addEventListener('click',function(){
   if(!confirm('すべてのデータを削除しますか？')) return;
   meets=[];records=[];saveData();localStorage.removeItem(LAST_MEET_KEY);
